@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f3f4f6;
+  overscroll-behavior-y: none;
+  /* Prevent iOS bounce */
+  -webkit-tap-highlight-color: transparent;
+  /* Remove active link highlight */
+}
+
+/* Prevent text selection across the app except in inputs */
+*:not(input):not(textarea) {
+  user-select: none;
+  -webkit-user-select: none;
+}
