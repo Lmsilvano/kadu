@@ -13,14 +13,27 @@ export interface AttendanceList {
     participants: Participant[];
 }
 
+export interface AppSettings {
+    key: string;
+    value: string;
+}
+
 export const db = new Dexie('AttendanceScannerDB') as Dexie & {
     attendance_lists: EntityTable<
         AttendanceList,
-        'id' // primary key "id"
+        'id'
+    >;
+    settings: EntityTable<
+        AppSettings,
+        'key'
     >;
 };
 
-// Schema declaration
 db.version(1).stores({
-    attendance_lists: 'id, title, date' // primary key and indexes
+    attendance_lists: 'id, title, date'
+});
+
+db.version(2).stores({
+    attendance_lists: 'id, title, date',
+    settings: 'key'
 });

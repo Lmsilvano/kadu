@@ -21,22 +21,36 @@ export default function NameReviewItem({ participant, onTogglePresence, onDelete
     };
 
     return (
-        <div className="flexitems-center justify-between p-3 bg-white border border-gray-100 rounded-xl shadow-sm mb-2 transition-all">
+        <div
+            className={`flex items-center justify-between p-4 mb-3 rounded-2xl shadow-sm border transition-all duration-300 ease-in-out cursor-pointer overflow-hidden relative
+            ${participant.present
+                    ? 'bg-emerald-50 border-emerald-200 hover:shadow-md'
+                    : 'bg-white border-gray-100 hover:border-blue-100 hover:shadow-md hover:bg-slate-50'
+                }`}
+            onClick={(e) => {
+                // Prevent toggle if clicking on action buttons
+                if ((e.target as HTMLElement).closest('.actions')) return;
+                if (!isEditing) onTogglePresence(participant.id, !participant.present);
+            }}
+        >
+            {/* Active Left Border for Present State */}
+            <div className={`absolute left-0 top-0 bottom-0 w-1.5 transition-colors duration-300 ${participant.present ? 'bg-emerald-500' : 'bg-transparent'}`} />
+
             {/* LEFT SIDE: Checkbox + Name */}
-            <div className="flex items-center space-x-3 flex-1 overflow-hidden" onClick={() => !isEditing && onTogglePresence(participant.id, !participant.present)}>
+            <div className="flex items-center space-x-4 flex-1 overflow-hidden ml-2 min-w-0">
                 <button
-                    className={`w-8 h-8 rounded-full flex items-center justify-center border-2 flex-shrink-0 transition-colors ${participant.present
-                        ? 'bg-blue-600 border-blue-600'
-                        : 'border-gray-300 bg-transparent'
+                    className={`w-6 h-6 rounded-full flex items-center justify-center border-2 flex-shrink-0 transition-all duration-300 ${participant.present
+                        ? 'bg-emerald-500 border-emerald-500 scale-110'
+                        : 'border-slate-300 bg-transparent group-hover:border-blue-400'
                         }`}
                 >
-                    {participant.present && <Check size={18} className="text-white" />}
+                    {participant.present && <Check size={14} className="text-white" />}
                 </button>
 
                 {isEditing ? (
                     <input
                         type="text"
-                        className="flex-1 px-2 py-1 border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="flex-1 px-3 py-1.5 text-slate-800 bg-white border border-blue-400 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
                         onBlur={handleSave}
@@ -44,25 +58,25 @@ export default function NameReviewItem({ participant, onTogglePresence, onDelete
                         autoFocus
                     />
                 ) : (
-                    <span className={`text-lg truncate select-none ${participant.present ? 'text-gray-900 font-medium' : 'text-gray-500'}`}>
+                    <span className={`text-base font-semibold truncate select-none transition-colors duration-200 ${participant.present ? 'text-slate-900' : 'text-slate-600'}`}>
                         {participant.name}
                     </span>
                 )}
             </div>
 
             {/* RIGHT SIDE: Actions */}
-            <div className="flex items-center space-x-1 ml-2">
+            <div className="actions flex items-center space-x-1 ml-4 opacity-70 hover:opacity-100 transition-opacity">
                 {isEditing ? (
-                    <button onClick={handleSave} className="p-2 text-green-600 hover:bg-green-50 rounded-lg">
-                        <Check size={20} />
+                    <button onClick={handleSave} className="p-2 text-emerald-600 hover:bg-emerald-100/50 rounded-xl transition-colors" title="Salvar">
+                        <Check size={18} />
                     </button>
                 ) : (
-                    <button onClick={() => setIsEditing(true)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg">
-                        <Edit2 size={18} />
+                    <button onClick={() => setIsEditing(true)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50/50 rounded-xl transition-colors" title="Editar Nome">
+                        <Edit2 size={16} />
                     </button>
                 )}
-                <button onClick={() => onDelete(participant.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
-                    <Trash2 size={18} />
+                <button onClick={() => onDelete(participant.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50/50 rounded-xl transition-colors" title="Excluir">
+                    <Trash2 size={16} />
                 </button>
             </div>
         </div>

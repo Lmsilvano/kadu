@@ -29,6 +29,10 @@ export async function deleteList(id: string): Promise<void> {
     await db.attendance_lists.delete(id);
 }
 
+export async function deleteMultipleLists(ids: string[]): Promise<void> {
+    await db.attendance_lists.bulkDelete(ids);
+}
+
 // Update Operations
 export async function updateParticipantPresence(listId: string, participantId: string, present: boolean): Promise<void> {
     const list = await getListById(listId);
@@ -67,3 +71,12 @@ export async function markAll(listId: string, present: boolean): Promise<void> {
     const updatedParticipants = list.participants.map(p => ({ ...p, present }));
     await db.attendance_lists.update(listId, { participants: updatedParticipants });
 }
+
+export async function addParticipantsToList(listId: string, newParticipants: Participant[]): Promise<void> {
+    const list = await getListById(listId);
+    if (!list) return;
+
+    const updatedParticipants = [...list.participants, ...newParticipants];
+    await db.attendance_lists.update(listId, { participants: updatedParticipants });
+}
+

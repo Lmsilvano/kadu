@@ -1,22 +1,26 @@
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Trash2, Download } from 'lucide-react';
+import { ArrowLeft, Trash2, Download, Plus } from 'lucide-react';
 import AttendanceListWrapper from '../components/AttendanceList';
+import AddParticipantModal from '../components/AddParticipantModal';
 import { generateCSV } from '../utils/exportUtils';
+import { useModal } from '../context/ModalContext';
 import {
     getListById,
     deleteList,
     updateParticipantPresence,
     updateParticipantName,
     deleteParticipant,
-    markAll
+    markAll,
+    addParticipantsToList
 } from '../storage/attendanceStore';
-import { type AttendanceList } from '../storage/db';
+import { type AttendanceList, type Participant } from '../storage/db';
 
 export default function AttendancePage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const [list, setList] = useState<AttendanceList | null>(null);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
     useEffect(() => {
         async function fetchList() {
@@ -31,7 +35,7 @@ export default function AttendancePage() {
         fetchList();
     }, [id, navigate]);
 
-    if (!list) return <div className="p-4 text-center">Loading...</div>;
+    if (!list) return <div className="p-4 text-center">Carregando...</div>;
 
     const handleToggle = async (participantId: string, present: boolean) => {
         await updateParticipantPresence(list.id, participantId, present);
@@ -65,8 +69,18 @@ export default function AttendancePage() {
         });
     };
 
+    const { confirm } = useModal();
+
     const handleDeleteList = async () => {
-        if (confirm('Are you sure you want to delete this list forever?')) {
+        const ok = await confirm({
+            title: 'Excluir Lista',
+            message: 'Tem certeza que deseja excluir esta lista permanentemente? Todos os dados de presença serão perdidos.',
+            type: 'danger',
+            confirmLabel: 'Excluir Agora',
+            cancelLabel: 'Manter Lista'
+        });
+
+        if (ok) {
             await deleteList(list.id);
             navigate('/', { replace: true });
         }
@@ -75,6 +89,21 @@ export default function AttendancePage() {
     const handleExport = () => {
         generateCSV(list.title, list.date, list.participants);
     };
+
+    const handleAddParticipants = async (names: string[]) => {
+        const newParticipants: Participant[] = names.map(name => ({
+            id: crypto.randomUUID(),
+            name,
+            present: false
+        }));
+
+        await addParticipantsToList(list.id, newParticipants);
+        setList({
+            ...list,
+            participants: [...list.participants, ...newParticipants]
+        });
+    };
+
 
     return (
         <div className="flex flex-col min-h-screen bg-white">
@@ -99,14 +128,14 @@ export default function AttendancePage() {
                     <button
                         onClick={handleExport}
                         className="p-2 text-blue-600 rounded-full active:bg-blue-50"
-                        title="Download CSV"
+                        title="Baixar CSV"
                     >
                         <Download size={22} />
                     </button>
                     <button
                         onClick={handleDeleteList}
                         className="p-2 -mr-2 text-red-500 rounded-full active:bg-red-50"
-                        title="Delete List"
+                        title="Excluir Lista"
                     >
                         <Trash2 size={24} />
                     </button>
@@ -123,6 +152,21 @@ export default function AttendancePage() {
                     onMarkAll={handleMarkAll}
                 />
             </main>
+
+            {/* Floating Action Button */}
+            <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="fixed bottom-6 right-6 p-4 bg-blue-600 text-white rounded-full shadow-lg active:scale-95 transition-transform z-30"
+                title="Adicionar Pessoa"
+            >
+                <Plus size={28} />
+            </button>
+
+            <AddParticipantModal
+                isOpen={isAddModalOpen}
+                onClose={() => setIsAddModalOpen(false)}
+                onSubmit={handleAddParticipants}
+            />
         </div>
     );
 }
