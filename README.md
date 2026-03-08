@@ -57,7 +57,6 @@ Kadu é um Aplicativo Web Progressivo (PWA) projetado para digitalizar e gerenci
 
 O projeto está configurado para deploy automático na Vercel. O roteamento de SPA e os assets de PWA são tratados através do arquivo `vercel.json` e do plugin `vite-plugin-pwa`.
 
-Certifique-se de configurar a variável `VITE_GROQ_API_KEY` nas configurações de Environment Variables da sua dashboard na Vercel.
 
 ## 📄 Licença
 
