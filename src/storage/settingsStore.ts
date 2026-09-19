@@ -1,8 +1,17 @@
-import { db } from './db';
+import { db, LIST_CATEGORIES, type ListCategory } from './db';
 
 const GEMINI_KEY = 'gemini_api_key';
 const OPENAI_KEY = 'openai_api_key';
 const GROQ_KEY = 'groq_api_key';
+const LAST_CATEGORY_KEY = 'last_category';
+
+export async function getLastCategory(): Promise<ListCategory> {
+    const value = (await db.settings.get(LAST_CATEGORY_KEY))?.value;
+    return LIST_CATEGORIES.find(c => c === value) ?? 'padrao';
+}
+export async function setLastCategory(category: ListCategory): Promise<void> {
+    await db.settings.put({ key: LAST_CATEGORY_KEY, value: category });
+}
 
 export async function getGeminiApiKey(): Promise<string | null> {
     const s = await db.settings.get(GEMINI_KEY);

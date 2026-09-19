@@ -2,26 +2,28 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, CheckCircle, Settings } from 'lucide-react';
 import CameraInput from '../components/CameraInput';
+import CategoryPicker from '../components/CategoryPicker';
 import { prepareImageForOcr } from '../vision/documentProcessor';
-import { saveList } from '../storage/attendanceStore';
-import { processSlicesToNames } from '../ocr/ocrWorker';
-import { extractNamesWithGemini } from '../ocr/geminiOcr';
-import { extractNamesWithOpenAI } from '../ocr/openaiOcr';
-import { extractNamesWithGroq } from '../ocr/groqOcr';
-import { getGeminiApiKey, getOpenAIApiKey, getGroqApiKey, setApiStatus } from '../storage/settingsStore';
+import { newParticipants, saveList } from '../storage/attendanceStore';
+import { recognizeText } from '../ocr/ocrWorker';
+import { hasAnyApiKey, runOcr } from '../ocr/cloudOcr';
+import { parseLines } from '../parsing/cleanText';
+import { CATEGORIES } from '../categories';
+import { useLastCategory } from '../hooks/useLastCategory';
 
 export default function ScannerPage() {
     const navigate = useNavigate();
+    const [category, setCategory] = useLastCategory();
     const [processingState, setProcessingState] = useState<'idle' | 'vision' | 'ocr' | 'saving'>('idle');
     const [ocrMethod, setOcrMethod] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [hasAnyKey, setHasAnyKey] = useState(false);
 
     useEffect(() => {
-        Promise.all([getGeminiApiKey(), getOpenAIApiKey(), getGroqApiKey()]).then(([g, o, gr]) => {
-            setHasAnyKey(!!(g || o || gr));
-        });
+        hasAnyApiKey().then(setHasAnyKey);
     }, []);
+
+    const config = CATEGORIES[category];
 
     const processImage = async (imgElement: HTMLImageElement) => {
         setProcessingState('vision');
@@ -31,87 +33,36 @@ export default function ScannerPage() {
             const dataUrl = prepareImageForOcr(imgElement);
             setProcessingState('ocr');
 
-            let names: string[] = [];
-            const warnings: string[] = [];
-
-            if (navigator.onLine) {
-                const geminiKey = await getGeminiApiKey();
-                if (geminiKey) {
-                    setOcrMethod('✨ Gemini IA');
-                    try {
-                        names = await extractNamesWithGemini(dataUrl, geminiKey);
-                        await setApiStatus('gemini', 'ok');
-                    } catch (e: any) {
-                        warnings.push('Gemini: ' + e.message);
-                        console.warn('Gemini failed:', e.message);
-                        if (e.message.includes('429') || e.message.includes('403') || e.message.includes('400')) {
-                            await setApiStatus('gemini', 'error');
-                        }
-                    }
-                }
-
-                if (names.length === 0) {
-                    const openaiKey = await getOpenAIApiKey();
-                    if (openaiKey) {
-                        setOcrMethod('🤖 OpenAI');
-                        try {
-                            names = await extractNamesWithOpenAI(dataUrl, openaiKey);
-                            await setApiStatus('openai', 'ok');
-                        } catch (e: any) {
-                            warnings.push('OpenAI: ' + e.message);
-                            console.warn('OpenAI failed:', e.message);
-                            if (e.message.includes('429') || e.message.includes('403') || e.message.includes('401')) {
-                                await setApiStatus('openai', 'error');
-                            }
-                        }
-                    }
-                }
-
-                // Try Groq if OpenAI didn't work
-                if (names.length === 0) {
-                    const groqKey = await getGroqApiKey();
-                    if (groqKey) {
-                        setOcrMethod('⚡ Groq (Llama)');
-                        try {
-                            names = await extractNamesWithGroq(dataUrl, groqKey);
-                            await setApiStatus('groq', 'ok');
-                        } catch (e: any) {
-                            warnings.push('Groq: ' + e.message);
-                            console.warn('Groq failed:', e.message);
-                            if (e.message.includes('429') || e.message.includes('403') || e.message.includes('400')) {
-                                await setApiStatus('groq', 'error');
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (names.length === 0) {
-                setOcrMethod('📱 OCR local');
-                names = await processSlicesToNames(dataUrl, () => { });
-            }
+            const parseItems = (text: string) => parseLines(text, config.parseScannedLine);
+            const { result, warnings } = await runOcr({
+                image: dataUrl,
+                prompt: config.scanPrompt,
+                parse: text => {
+                    const items = parseItems(text);
+                    return items.length > 0 ? items : null;
+                },
+                local: async image => parseItems(await recognizeText(image)),
+                onMethod: setOcrMethod,
+            });
+            const items = result ?? [];
 
             if (warnings.length > 0) {
                 console.warn('API warnings:', warnings);
                 setError('⚠️ ' + warnings.join(' | '));
             }
 
-            if (names.length === 0) {
-                throw new Error('Nenhum nome foi detectado. Por favor, tente outra foto.');
+            if (items.length === 0) {
+                throw new Error(`Não encontramos ${config.itemNoun.many} na foto. Por favor, tente outra foto.`);
             }
 
             setProcessingState('saving');
-            const participants = names.map(n => ({
-                id: crypto.randomUUID(),
-                name: n,
-                present: false
-            }));
-
-            const newListId = await saveList(
-                'Escaneado em ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-                new Date().toISOString(),
-                participants
-            );
+            const now = new Date();
+            const newListId = await saveList({
+                title: config.defaultTitle('scan', now),
+                date: now.toISOString(),
+                category,
+                participants: newParticipants(items),
+            });
 
             navigate(`/list/${newListId}`, { replace: true });
         } catch (err: any) {
@@ -146,7 +97,7 @@ export default function ScannerPage() {
                     ) : processingState === 'ocr' ? (
                         <div className="flex flex-col items-center text-indigo-600">
                             <Loader2 size={48} className="animate-spin mb-3" />
-                            <p className="font-medium animate-pulse">Lendo Nomes...</p>
+                            <p className="font-medium animate-pulse">Lendo a lista...</p>
                             {ocrMethod && (
                                 <p className="text-xs mt-2 text-gray-400">{ocrMethod}</p>
                             )}
@@ -158,8 +109,11 @@ export default function ScannerPage() {
                         </div>
                     ) : (
                         <>
+                            <div className="mb-4">
+                                <CategoryPicker value={category} onChange={setCategory} />
+                            </div>
                             <p className="text-gray-600 mb-4 text-sm">
-                                Garanta uma boa iluminação e capture a página inteira.
+                                {config.scanHint}
                             </p>
                             {!hasAnyKey && (
                                 <div className="mx-auto max-w-sm mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3 text-left">

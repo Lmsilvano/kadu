@@ -1,5 +1,6 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState } from 'react';
 import { Camera, Upload, X } from 'lucide-react';
+import { useCameraStream } from '../hooks/useCameraStream';
 
 interface Props {
     onImageSelected: (imageElement: HTMLImageElement) => void;
@@ -7,48 +8,25 @@ interface Props {
 
 export default function CameraInput({ onImageSelected }: Props) {
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const streamRef = useRef<MediaStream | null>(null);
-    const [error, setError] = useState<string | null>(null);
-    const [cameraActive, setCameraActive] = useState(false);
+    const {
+        videoRef,
+        active: cameraActive,
+        error: cameraError,
+        start,
+        stop: stopCamera,
+        capture
+    } = useCameraStream();
+    const [fileError, setFileError] = useState<string | null>(null);
+    const error = fileError ?? cameraError;
 
-    const stopCamera = useCallback(() => {
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(t => t.stop());
-            streamRef.current = null;
-        }
-        setCameraActive(false);
-    }, []);
-
-    const startCamera = async () => {
-        setError(null);
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
-            });
-            streamRef.current = stream;
-            setCameraActive(true);
-
-            await new Promise<void>(resolve => setTimeout(resolve, 50));
-
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                videoRef.current.play();
-            }
-        } catch {
-            setError('Não foi possível acessar a câmera. Verifique as permissões do navegador.');
-        }
+    const startCamera = () => {
+        setFileError(null);
+        start();
     };
 
     const capturePhoto = () => {
-        const video = videoRef.current;
-        if (!video) return;
-
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d')!;
-        ctx.drawImage(video, 0, 0);
+        const canvas = capture();
+        if (!canvas) return;
 
         stopCamera();
 
@@ -62,11 +40,11 @@ export default function CameraInput({ onImageSelected }: Props) {
         if (!file) return;
 
         if (!file.type.startsWith('image/')) {
-            setError('O arquivo selecionado não é uma imagem');
+            setFileError('O arquivo selecionado não é uma imagem');
             return;
         }
 
-        setError(null);
+        setFileError(null);
         const objectUrl = URL.createObjectURL(file);
         const img = new Image();
         img.onload = () => {
@@ -74,7 +52,7 @@ export default function CameraInput({ onImageSelected }: Props) {
             URL.revokeObjectURL(objectUrl);
         };
         img.onerror = () => {
-            setError('Falha ao carregar a imagem');
+            setFileError('Falha ao carregar a imagem');
             URL.revokeObjectURL(objectUrl);
         };
         img.src = objectUrl;

@@ -11,3 +11,8 @@ export function useAttendanceStore() {
         loading: lists === undefined
     };
 }
+
+/** undefined while loading, null when the list doesn't exist. */
+export function useAttendanceList(id: string | undefined) {
+    return useLiveQuery(async () => (id ? await db.attendance_lists.get(id) : undefined) ?? null, [id]);
+}
