@@ -1,6 +1,6 @@
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { ArrowLeft, Trash2, Download, Plus } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowLeft, Trash2, Download, Plus, Edit2 } from 'lucide-react';
 import AttendanceListWrapper from '../components/AttendanceList';
 import AddParticipantModal from '../components/AddParticipantModal';
 import { generateCSV } from '../utils/exportUtils';
@@ -12,7 +12,8 @@ import {
     updateParticipantName,
     deleteParticipant,
     markAll,
-    addParticipantsToList
+    addParticipantsToList,
+    updateListTitle
 } from '../storage/attendanceStore';
 import { type AttendanceList, type Participant } from '../storage/db';
 
@@ -21,6 +22,9 @@ export default function AttendancePage() {
     const navigate = useNavigate();
     const [list, setList] = useState<AttendanceList | null>(null);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [titleDraft, setTitleDraft] = useState('');
+    const skipTitleBlurSave = useRef(false);
 
     useEffect(() => {
         async function fetchList() {
@@ -104,6 +108,47 @@ export default function AttendancePage() {
         });
     };
 
+    const startTitleEdit = () => {
+        skipTitleBlurSave.current = false;
+        setTitleDraft(list.title);
+        setIsEditingTitle(true);
+    };
+
+    const cancelTitleEdit = () => {
+        skipTitleBlurSave.current = true;
+        setTitleDraft(list.title);
+        setIsEditingTitle(false);
+    };
+
+    const saveTitleEdit = async () => {
+        const next = titleDraft.trim();
+        setIsEditingTitle(false);
+        if (!next || next === list.title) {
+            setTitleDraft(list.title);
+            return;
+        }
+        await updateListTitle(list.id, next);
+        setList({ ...list, title: next });
+    };
+
+    const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            void saveTitleEdit();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            cancelTitleEdit();
+        }
+    };
+
+    const handleTitleBlur = () => {
+        if (skipTitleBlurSave.current) {
+            skipTitleBlurSave.current = false;
+            return;
+        }
+        void saveTitleEdit();
+    };
+
 
     return (
         <div className="flex flex-col min-h-screen bg-white">
@@ -116,9 +161,30 @@ export default function AttendancePage() {
                 </div>
 
                 <div className="flex-1 px-2 text-center overflow-hidden">
-                    <h1 className="text-lg font-bold text-gray-900 truncate">
-                        {list.title}
-                    </h1>
+                    {isEditingTitle ? (
+                        <input
+                            type="text"
+                            className="w-full text-lg font-bold text-gray-900 text-center px-2 py-0.5 bg-white border border-blue-400 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                            value={titleDraft}
+                            onChange={(e) => setTitleDraft(e.target.value)}
+                            onBlur={handleTitleBlur}
+                            onKeyDown={handleTitleKeyDown}
+                            aria-label="Nome da lista"
+                            autoFocus
+                        />
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={startTitleEdit}
+                            className="max-w-full inline-flex items-center justify-center gap-1.5 mx-auto min-h-[28px]"
+                            title="Renomear lista"
+                        >
+                            <h1 className="text-lg font-bold text-gray-900 truncate">
+                                {list.title}
+                            </h1>
+                            <Edit2 size={14} className="text-slate-400 flex-shrink-0" />
+                        </button>
+                    )}
                     <p className="text-xs text-gray-500 font-medium">
                         {new Date(list.date).toLocaleDateString()}
                     </p>

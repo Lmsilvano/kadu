@@ -80,3 +80,9 @@ export async function addParticipantsToList(listId: string, newParticipants: Par
     await db.attendance_lists.update(listId, { participants: updatedParticipants });
 }
 
+export async function updateListTitle(listId: string, title: string): Promise<void> {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    await db.attendance_lists.update(listId, { title: trimmed });
+}
+
