@@ -5,24 +5,33 @@ import { normalizeName } from '../parsing/cleanText';
 interface Props {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (names: string[]) => void;
+    onSubmit: (names: string[], title: string) => void;
 }
 
 export default function ManualCreateModal({ isOpen, onClose, onSubmit }: Props) {
     const [text, setText] = useState('');
+    const [listName, setListName] = useState('');
+    const dateFallback = `Lista Manual ${new Date().toLocaleDateString('pt-BR')}`;
 
     if (!isOpen) return null;
 
+    const handleClose = () => {
+        setText('');
+        setListName('');
+        onClose();
+    };
+
     const handleSubmit = () => {
-        // Split by newline, trim, and filter out empty strings
         const names = text
             .split('\n')
             .map(name => name.trim())
             .filter(name => name.length >= 2)
             .map(normalizeName);
 
-        onSubmit(names);
+        const title = listName.trim() || dateFallback;
+        onSubmit(names, title);
         setText('');
+        setListName('');
         onClose();
     };
 
@@ -35,7 +44,7 @@ export default function ManualCreateModal({ isOpen, onClose, onSubmit }: Props) 
                 <div className="flex items-center justify-between p-5 border-b border-gray-100">
                     <h2 className="text-xl font-bold text-gray-900">Criar Lista Manual</h2>
                     <button
-                        onClick={onClose}
+                        onClick={handleClose}
                         className="p-2 -mr-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
                     >
                         <X size={24} />
@@ -43,11 +52,22 @@ export default function ManualCreateModal({ isOpen, onClose, onSubmit }: Props) 
                 </div>
 
                 <div className="p-5 flex-1 overflow-y-auto">
+                    <label className="block text-sm font-medium text-gray-600 mb-2" htmlFor="manual-list-name">
+                        Nome da lista
+                    </label>
+                    <input
+                        id="manual-list-name"
+                        type="text"
+                        className="w-full mb-4 p-4 border border-blue-200 rounded-2xl bg-blue-50/30 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
+                        placeholder={dateFallback}
+                        value={listName}
+                        onChange={(e) => setListName(e.target.value)}
+                    />
                     <p className="text-sm text-gray-500 mb-4">
                         Cole ou digite os nomes dos participantes. Coloque <strong>um nome por linha</strong>.
                     </p>
                     <textarea
-                        className="w-full h-64 p-4 border border-blue-200 rounded-2xl bg-blue-50/30 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none leading-relaxed shadow-inner font-medium text-gray-800"
+                        className="w-full h-48 p-4 border border-blue-200 rounded-2xl bg-blue-50/30 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none leading-relaxed shadow-inner font-medium text-gray-800"
                         placeholder="Exemplo:&#10;João Silva&#10;Maria Souza&#10;Pedro Costa"
                         value={text}
                         onChange={(e) => setText(e.target.value)}
@@ -56,7 +76,7 @@ export default function ManualCreateModal({ isOpen, onClose, onSubmit }: Props) 
 
                 <div className="p-5 bg-gray-50 border-t border-gray-100 flex space-x-3">
                     <button
-                        onClick={onClose}
+                        onClick={handleClose}
                         className="flex-1 py-3 px-4 bg-white border border-gray-300 rounded-xl text-gray-700 font-semibold active:bg-gray-50 transition-colors"
                     >
                         Cancelar

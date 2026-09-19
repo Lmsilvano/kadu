@@ -1,9 +1,10 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Camera, FileText, ChevronRight, Plus, Edit3, Trash2, CheckSquare, Square, Settings } from 'lucide-react';
+import { Camera, FileText, ChevronRight, Plus, Edit3, Trash2, CheckSquare, Square, Settings, Pencil } from 'lucide-react';
 import { useAttendanceStore } from '../hooks/useAttendanceStore';
-import { saveList, deleteMultipleLists } from '../storage/attendanceStore';
+import { saveList, deleteMultipleLists, updateListTitle } from '../storage/attendanceStore';
 import { useState } from 'react';
 import ManualCreateModal from '../components/ManualCreateModal';
+import RenameListModal from '../components/RenameListModal';
 import { useModal } from '../context/ModalContext';
 
 export default function HomePage() {
@@ -14,6 +15,7 @@ export default function HomePage() {
     const [isEditing, setIsEditing] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
 
     const handleCreateMock = async () => {
         await saveList('Lista Teste ' + Math.floor(Math.random() * 100), new Date().toISOString(), [
@@ -23,7 +25,7 @@ export default function HomePage() {
         ]);
     };
 
-    const handleManualSubmit = async (names: string[]) => {
+    const handleManualSubmit = async (names: string[], title: string) => {
         const participants = names.map(name => ({
             id: crypto.randomUUID(),
             name,
@@ -31,7 +33,7 @@ export default function HomePage() {
         }));
 
         const newListId = await saveList(
-            'Lista Manual ' + new Date().toLocaleDateString('pt-BR'),
+            title,
             new Date().toISOString(),
             participants
         );
@@ -78,6 +80,15 @@ export default function HomePage() {
     const toggleEditMode = () => {
         setIsEditing(!isEditing);
         setSelectedIds(new Set());
+    };
+
+    const selectedList = lists.find(list => selectedIds.has(list.id));
+
+    const handleRenameSelected = async (title: string) => {
+        if (!selectedList) return;
+        await updateListTitle(selectedList.id, title);
+        setSelectedIds(new Set());
+        setIsEditing(false);
     };
 
     return (
@@ -184,16 +195,30 @@ export default function HomePage() {
                 )}
             </div>
 
-            {/* Floating Action Bar for Deletion */}
             {isEditing && selectedIds.size > 0 && (
                 <div className="fixed bottom-6 left-0 right-0 px-4 animate-in slide-in-from-bottom flex justify-center z-40">
-                    <button
-                        onClick={handleDeleteSelected}
-                        className="flex items-center space-x-2 bg-red-600 text-white px-6 py-4 rounded-full shadow-lg hover:bg-red-700 active:scale-95 transition-all w-full max-w-sm justify-center font-bold text-lg"
-                    >
-                        <Trash2 size={24} />
-                        <span>Excluir {selectedIds.size} Lista{selectedIds.size > 1 ? 's' : ''}</span>
-                    </button>
+                    <div className="flex items-center gap-3 w-full max-w-sm">
+                        {selectedIds.size === 1 && (
+                            <button
+                                onClick={() => setIsRenameModalOpen(true)}
+                                className="flex-1 flex items-center space-x-2 bg-white border border-gray-200 text-slate-700 px-5 py-4 rounded-full shadow-lg hover:bg-slate-50 active:scale-95 transition-all justify-center font-bold text-lg"
+                            >
+                                <Pencil size={22} />
+                                <span>Renomear</span>
+                            </button>
+                        )}
+                        <button
+                            onClick={handleDeleteSelected}
+                            className="flex-1 flex items-center space-x-2 bg-red-600 text-white px-5 py-4 rounded-full shadow-lg hover:bg-red-700 active:scale-95 transition-all justify-center font-bold text-lg"
+                        >
+                            <Trash2 size={24} />
+                            <span>
+                                {selectedIds.size === 1
+                                    ? 'Excluir'
+                                    : `Excluir ${selectedIds.size} Listas`}
+                            </span>
+                        </button>
+                    </div>
                 </div>
             )}
 
@@ -201,6 +226,12 @@ export default function HomePage() {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 onSubmit={handleManualSubmit}
+            />
+            <RenameListModal
+                isOpen={isRenameModalOpen}
+                onClose={() => setIsRenameModalOpen(false)}
+                currentTitle={selectedList?.title ?? ''}
+                onSubmit={handleRenameSelected}
             />
         </div>
     );
