@@ -1,4 +1,4 @@
-import { db, type AttendanceList, type Participant } from './db';
+import { db, type AttendanceList, type ListCategory, type Participant } from './db';
 import type { ParsedItem } from '../parsing/cleanText';
 
 export type ParticipantChanges = Partial<Omit<Participant, 'id'>>;
@@ -34,8 +34,14 @@ export async function deleteMultipleLists(ids: string[]): Promise<void> {
 }
 
 // Update Operations
-export async function updateList(listId: string, changes: Partial<Pick<AttendanceList, 'title' | 'category'>>): Promise<void> {
-    await db.attendance_lists.update(listId, changes);
+export async function updateListTitle(listId: string, title: string): Promise<void> {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    await db.attendance_lists.update(listId, { title: trimmed });
+}
+
+export async function updateListCategory(listId: string, category: ListCategory): Promise<void> {
+    await db.attendance_lists.update(listId, { category });
 }
 
 // modify() runs read + write in one transaction, so quick successive taps can't overwrite each other.

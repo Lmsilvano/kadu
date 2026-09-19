@@ -1,6 +1,6 @@
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { ArrowLeft, Trash2, Download, Plus, ChevronDown } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowLeft, Trash2, Download, Plus, ChevronDown, Edit2 } from 'lucide-react';
 import AttendanceListWrapper from '../components/AttendanceList';
 import AddParticipantModal from '../components/AddParticipantModal';
 import ItemSheet from '../components/ItemSheet';
@@ -13,7 +13,8 @@ import type { ParsedItem } from '../parsing/cleanText';
 import { LIST_CATEGORIES } from '../storage/db';
 import {
     deleteList,
-    updateList,
+    updateListCategory,
+    updateListTitle,
     updateParticipant,
     deleteParticipant,
     markAll,
@@ -29,6 +30,10 @@ export default function AttendancePage() {
     const { confirm } = useModal();
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [titleDraft, setTitleDraft] = useState('');
+    const titleDraftRef = useRef('');
+    const titleEditModeRef = useRef<'idle' | 'editing' | 'cancelled'>('idle');
 
     useEffect(() => {
         if (list === null) navigate('/', { replace: true });
@@ -70,7 +75,7 @@ export default function AttendancePage() {
             cancelLabel: 'Cancelar'
         });
 
-        if (ok) await updateList(list.id, { category: next });
+        if (ok) await updateListCategory(list.id, next);
     };
 
     const handleDeleteList = async () => {
@@ -88,6 +93,42 @@ export default function AttendancePage() {
         }
     };
 
+    const startTitleEdit = () => {
+        titleEditModeRef.current = 'editing';
+        titleDraftRef.current = list.title;
+        setTitleDraft(list.title);
+        setIsEditingTitle(true);
+    };
+
+    const cancelTitleEdit = () => {
+        titleEditModeRef.current = 'cancelled';
+        titleDraftRef.current = list.title;
+        setTitleDraft(list.title);
+        setIsEditingTitle(false);
+    };
+
+    const saveTitleEdit = async () => {
+        if (titleEditModeRef.current !== 'editing') return;
+        titleEditModeRef.current = 'idle';
+        const next = titleDraftRef.current.trim();
+        setIsEditingTitle(false);
+        if (!next || next === list.title) {
+            setTitleDraft(list.title);
+            return;
+        }
+        await updateListTitle(list.id, next);
+    };
+
+    const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            void saveTitleEdit();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            cancelTitleEdit();
+        }
+    };
+
     return (
         <div className="flex flex-col min-h-screen bg-white">
             {/* Header */}
@@ -99,19 +140,46 @@ export default function AttendancePage() {
                 </div>
 
                 <div className="flex-1 px-2 text-center overflow-hidden">
-                    <h1 className="text-lg font-bold text-gray-900 truncate">
-                        {list.title}
-                    </h1>
-                    <button
-                        type="button"
-                        onClick={handleChangeCategory}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs text-gray-500 font-medium rounded-full active:bg-gray-100 transition-colors"
-                        title="Trocar tipo de lista"
-                    >
-                        <CategoryIcon size={12} />
-                        <span>{config.label} · {new Date(list.date).toLocaleDateString()}</span>
-                        <ChevronDown size={12} />
-                    </button>
+                    {isEditingTitle ? (
+                        <input
+                            type="text"
+                            className="w-full text-lg font-bold text-gray-900 text-center px-2 py-0.5 bg-white border border-blue-400 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                            value={titleDraft}
+                            onChange={(e) => {
+                                titleDraftRef.current = e.target.value;
+                                setTitleDraft(e.target.value);
+                            }}
+                            onBlur={() => { void saveTitleEdit(); }}
+                            onFocus={(e) => e.currentTarget.select()}
+                            onKeyDown={handleTitleKeyDown}
+                            aria-label="Nome da lista"
+                            autoFocus
+                        />
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={startTitleEdit}
+                            className="max-w-full inline-flex items-center justify-center gap-1.5 mx-auto min-h-[28px]"
+                            title="Renomear lista"
+                        >
+                            <h1 className="text-lg font-bold text-gray-900 truncate">
+                                {list.title}
+                            </h1>
+                            <Edit2 size={14} className="text-slate-400 flex-shrink-0" />
+                        </button>
+                    )}
+                    <div>
+                        <button
+                            type="button"
+                            onClick={handleChangeCategory}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs text-gray-500 font-medium rounded-full active:bg-gray-100 transition-colors"
+                            title="Trocar tipo de lista"
+                        >
+                            <CategoryIcon size={12} />
+                            <span>{config.label} · {new Date(list.date).toLocaleDateString()}</span>
+                            <ChevronDown size={12} />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex items-center space-x-1">
