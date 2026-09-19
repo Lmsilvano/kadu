@@ -212,7 +212,11 @@ export default function HomePage() {
                             className="flex-1 flex items-center space-x-2 bg-red-600 text-white px-5 py-4 rounded-full shadow-lg hover:bg-red-700 active:scale-95 transition-all justify-center font-bold text-lg"
                         >
                             <Trash2 size={24} />
-                            <span>Excluir {selectedIds.size} Lista{selectedIds.size > 1 ? 's' : ''}</span>
+                            <span>
+                                {selectedIds.size === 1
+                                    ? 'Excluir'
+                                    : `Excluir ${selectedIds.size} Listas`}
+                            </span>
                         </button>
                     </div>
                 </div>

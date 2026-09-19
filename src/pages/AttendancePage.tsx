@@ -24,7 +24,8 @@ export default function AttendancePage() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [titleDraft, setTitleDraft] = useState('');
-    const skipTitleBlurSave = useRef(false);
+    const titleDraftRef = useRef('');
+    const titleEditModeRef = useRef<'idle' | 'editing' | 'cancelled'>('idle');
 
     useEffect(() => {
         async function fetchList() {
@@ -109,19 +110,23 @@ export default function AttendancePage() {
     };
 
     const startTitleEdit = () => {
-        skipTitleBlurSave.current = false;
+        titleEditModeRef.current = 'editing';
+        titleDraftRef.current = list.title;
         setTitleDraft(list.title);
         setIsEditingTitle(true);
     };
 
     const cancelTitleEdit = () => {
-        skipTitleBlurSave.current = true;
+        titleEditModeRef.current = 'cancelled';
+        titleDraftRef.current = list.title;
         setTitleDraft(list.title);
         setIsEditingTitle(false);
     };
 
     const saveTitleEdit = async () => {
-        const next = titleDraft.trim();
+        if (titleEditModeRef.current !== 'editing') return;
+        titleEditModeRef.current = 'idle';
+        const next = titleDraftRef.current.trim();
         setIsEditingTitle(false);
         if (!next || next === list.title) {
             setTitleDraft(list.title);
@@ -141,14 +146,6 @@ export default function AttendancePage() {
         }
     };
 
-    const handleTitleBlur = () => {
-        if (skipTitleBlurSave.current) {
-            skipTitleBlurSave.current = false;
-            return;
-        }
-        void saveTitleEdit();
-    };
-
 
     return (
         <div className="flex flex-col min-h-screen bg-white">
@@ -166,8 +163,12 @@ export default function AttendancePage() {
                             type="text"
                             className="w-full text-lg font-bold text-gray-900 text-center px-2 py-0.5 bg-white border border-blue-400 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                             value={titleDraft}
-                            onChange={(e) => setTitleDraft(e.target.value)}
-                            onBlur={handleTitleBlur}
+                            onChange={(e) => {
+                                titleDraftRef.current = e.target.value;
+                                setTitleDraft(e.target.value);
+                            }}
+                            onBlur={() => { void saveTitleEdit(); }}
+                            onFocus={(e) => e.currentTarget.select()}
                             onKeyDown={handleTitleKeyDown}
                             aria-label="Nome da lista"
                             autoFocus
