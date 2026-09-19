@@ -6,9 +6,18 @@ interface Props {
     onClose: () => void;
     currentTitle: string;
     onSubmit: (title: string) => void;
+    heading?: string;
+    confirmLabel?: string;
 }
 
-export default function RenameListModal({ isOpen, onClose, currentTitle, onSubmit }: Props) {
+export default function RenameListModal({
+    isOpen,
+    onClose,
+    currentTitle,
+    onSubmit,
+    heading = 'Renomear lista',
+    confirmLabel = 'Salvar',
+}: Props) {
     const [title, setTitle] = useState(currentTitle);
 
     useEffect(() => {
@@ -32,7 +41,7 @@ export default function RenameListModal({ isOpen, onClose, currentTitle, onSubmi
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between p-5 border-b border-gray-100">
-                    <h2 className="text-xl font-bold text-gray-900">Renomear lista</h2>
+                    <h2 className="text-xl font-bold text-gray-900">{heading}</h2>
                     <button
                         onClick={onClose}
                         className="p-2 -mr-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
@@ -68,7 +77,7 @@ export default function RenameListModal({ isOpen, onClose, currentTitle, onSubmi
                         disabled={!trimmed}
                         className="flex-1 py-3 px-4 bg-blue-600 rounded-xl text-white font-semibold active:bg-blue-700 disabled:opacity-50 disabled:active:bg-blue-600 transition-all disabled:select-none"
                     >
-                        Salvar
+                        {confirmLabel}
                     </button>
                 </div>
             </div>
