@@ -16,13 +16,11 @@ export default function HomePage() {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-    const handleCreateMock = async () => {
-        await saveList('Lista Teste ' + Math.floor(Math.random() * 100), new Date().toISOString(), [
-            { id: crypto.randomUUID(), name: 'João Silva', present: true },
-            { id: crypto.randomUUID(), name: 'Maria Souza', present: false },
-            { id: crypto.randomUUID(), name: 'Pedro Costa', present: true },
-        ]);
+    const handleCreateEmpty = async (name: string) => {
+        const newListId = await saveList(name, new Date().toISOString(), []);
+        navigate(`/list/${newListId}`);
     };
 
     const handleManualSubmit = async (names: string[], title: string) => {
@@ -139,7 +137,7 @@ export default function HomePage() {
                             </button>
                         )}
                         {!isEditing && (
-                            <button onClick={handleCreateMock} className="p-2 bg-gray-200 rounded-lg text-gray-600 hover:bg-gray-300 transition-colors" title="Adicionar lista teste">
+                            <button onClick={() => setIsCreateModalOpen(true)} className="p-2 bg-gray-200 rounded-lg text-gray-600 hover:bg-gray-300 transition-colors" title="Nova lista">
                                 <Plus size={18} />
                             </button>
                         )}
@@ -232,6 +230,14 @@ export default function HomePage() {
                 onClose={() => setIsRenameModalOpen(false)}
                 currentTitle={selectedList?.title ?? ''}
                 onSubmit={handleRenameSelected}
+            />
+            <RenameListModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                currentTitle=""
+                heading="Nova lista"
+                confirmLabel="Criar"
+                onSubmit={handleCreateEmpty}
             />
         </div>
     );
