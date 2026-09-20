@@ -1,80 +1,82 @@
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Trash2, Download, Plus, Edit2 } from 'lucide-react';
+import { ArrowLeft, Trash2, Download, Plus, ChevronDown, Edit2 } from 'lucide-react';
 import AttendanceListWrapper from '../components/AttendanceList';
 import AddParticipantModal from '../components/AddParticipantModal';
+import ItemSheet from '../components/ItemSheet';
+import MarketTotalsBar from '../components/MarketTotalsBar';
 import { generateCSV } from '../utils/exportUtils';
 import { useModal } from '../context/ModalContext';
+import { useAttendanceList } from '../hooks/useAttendanceStore';
+import { CATEGORIES } from '../categories';
+import type { ParsedItem } from '../parsing/cleanText';
+import { LIST_CATEGORIES } from '../storage/db';
 import {
-    getListById,
     deleteList,
-    updateParticipantPresence,
-    updateParticipantName,
+    updateListCategory,
+    updateListTitle,
+    updateParticipant,
     deleteParticipant,
     markAll,
     addParticipantsToList,
-    updateListTitle
+    newParticipants,
+    type ParticipantChanges
 } from '../storage/attendanceStore';
-import { type AttendanceList, type Participant } from '../storage/db';
 
 export default function AttendancePage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const [list, setList] = useState<AttendanceList | null>(null);
+    const list = useAttendanceList(id);
+    const { confirm } = useModal();
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [titleDraft, setTitleDraft] = useState('');
     const titleDraftRef = useRef('');
     const titleEditModeRef = useRef<'idle' | 'editing' | 'cancelled'>('idle');
 
     useEffect(() => {
-        async function fetchList() {
-            if (!id) return;
-            const data = await getListById(id);
-            if (data) {
-                setList(data);
-            } else {
-                navigate('/', { replace: true });
-            }
-        }
-        fetchList();
-    }, [id, navigate]);
+        if (list === null) navigate('/', { replace: true });
+    }, [list, navigate]);
 
     if (!list) return <div className="p-4 text-center">Carregando...</div>;
 
-    const handleToggle = async (participantId: string, present: boolean) => {
-        await updateParticipantPresence(list.id, participantId, present);
-        setList({
-            ...list,
-            participants: list.participants.map(p => p.id === participantId ? { ...p, present } : p)
-        });
+    const config = CATEGORIES[list.category];
+    const CategoryIcon = config.icon;
+    const editing = list.participants.find(p => p.id === editingId);
+
+    const handleToggle = (participantId: string, present: boolean) =>
+        updateParticipant(list.id, participantId, { present });
+
+    const handleDeleteEntry = (participantId: string) => deleteParticipant(list.id, participantId);
+
+    const handleMarkAll = (present: boolean) => markAll(list.id, present);
+
+    const handleSaveDetails = (participantId: string, changes: ParticipantChanges) => {
+        setEditingId(null);
+        updateParticipant(list.id, participantId, changes);
     };
 
-    const handleEdit = async (participantId: string, newName: string) => {
-        await updateParticipantName(list.id, participantId, newName);
-        setList({
-            ...list,
-            participants: list.participants.map(p => p.id === participantId ? { ...p, name: newName } : p)
-        });
+    const handleDeleteFromSheet = (participantId: string) => {
+        setEditingId(null);
+        deleteParticipant(list.id, participantId);
     };
 
-    const handleDeleteEntry = async (participantId: string) => {
-        await deleteParticipant(list.id, participantId);
-        setList({
-            ...list,
-            participants: list.participants.filter(p => p.id !== participantId)
-        });
-    };
+    const handleAddParticipants = (items: ParsedItem[]) =>
+        addParticipantsToList(list.id, newParticipants(items));
 
-    const handleMarkAll = async (present: boolean) => {
-        await markAll(list.id, present);
-        setList({
-            ...list,
-            participants: list.participants.map(p => ({ ...p, present }))
+    const handleChangeCategory = async () => {
+        const next = LIST_CATEGORIES[(LIST_CATEGORIES.indexOf(list.category) + 1) % LIST_CATEGORIES.length];
+        const ok = await confirm({
+            title: `Converter para lista ${CATEGORIES[next].label}?`,
+            message: 'Nada é apagado: observações, marcações, preços e quantidades continuam guardados, mesmo os que não aparecem no novo tipo.',
+            type: 'info',
+            confirmLabel: 'Converter',
+            cancelLabel: 'Cancelar'
         });
-    };
 
-    const { confirm } = useModal();
+        if (ok) await updateListCategory(list.id, next);
+    };
 
     const handleDeleteList = async () => {
         const ok = await confirm({
@@ -89,24 +91,6 @@ export default function AttendancePage() {
             await deleteList(list.id);
             navigate('/', { replace: true });
         }
-    };
-
-    const handleExport = () => {
-        generateCSV(list.title, list.date, list.participants);
-    };
-
-    const handleAddParticipants = async (names: string[]) => {
-        const newParticipants: Participant[] = names.map(name => ({
-            id: crypto.randomUUID(),
-            name,
-            present: false
-        }));
-
-        await addParticipantsToList(list.id, newParticipants);
-        setList({
-            ...list,
-            participants: [...list.participants, ...newParticipants]
-        });
     };
 
     const startTitleEdit = () => {
@@ -133,7 +117,6 @@ export default function AttendancePage() {
             return;
         }
         await updateListTitle(list.id, next);
-        setList({ ...list, title: next });
     };
 
     const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -145,7 +128,6 @@ export default function AttendancePage() {
             cancelTitleEdit();
         }
     };
-
 
     return (
         <div className="flex flex-col min-h-screen bg-white">
@@ -186,14 +168,23 @@ export default function AttendancePage() {
                             <Edit2 size={14} className="text-slate-400 flex-shrink-0" />
                         </button>
                     )}
-                    <p className="text-xs text-gray-500 font-medium">
-                        {new Date(list.date).toLocaleDateString()}
-                    </p>
+                    <div>
+                        <button
+                            type="button"
+                            onClick={handleChangeCategory}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs text-gray-500 font-medium rounded-full active:bg-gray-100 transition-colors"
+                            title="Trocar tipo de lista"
+                        >
+                            <CategoryIcon size={12} />
+                            <span>{config.label} · {new Date(list.date).toLocaleDateString()}</span>
+                            <ChevronDown size={12} />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex items-center space-x-1">
                     <button
-                        onClick={handleExport}
+                        onClick={() => generateCSV(list)}
                         className="p-2 text-blue-600 rounded-full active:bg-blue-50"
                         title="Baixar CSV"
                     >
@@ -213,27 +204,43 @@ export default function AttendancePage() {
             <main className="flex-1 p-4 bg-gray-50">
                 <AttendanceListWrapper
                     participants={list.participants}
+                    category={list.category}
                     onTogglePresence={handleToggle}
-                    onEditName={handleEdit}
+                    onOpenDetails={setEditingId}
                     onDelete={handleDeleteEntry}
                     onMarkAll={handleMarkAll}
                 />
             </main>
 
+            {config.features.pricing && <MarketTotalsBar participants={list.participants} />}
+
             {/* Floating Action Button */}
             <button
                 onClick={() => setIsAddModalOpen(true)}
-                className="fixed bottom-6 right-6 p-4 bg-blue-600 text-white rounded-full shadow-lg active:scale-95 transition-transform z-30"
-                title="Adicionar Pessoa"
+                className={`fixed right-6 ${config.features.pricing ? 'bottom-24' : 'bottom-6'} p-4 bg-blue-600 text-white rounded-full shadow-lg active:scale-95 transition-transform z-30`}
+                title={`Adicionar ${config.itemNoun.one}`}
+                aria-label={`Adicionar ${config.itemNoun.one}`}
             >
                 <Plus size={28} />
             </button>
 
             <AddParticipantModal
                 isOpen={isAddModalOpen}
+                category={list.category}
                 onClose={() => setIsAddModalOpen(false)}
                 onSubmit={handleAddParticipants}
             />
+
+            {editing && (
+                <ItemSheet
+                    key={editing.id}
+                    participant={editing}
+                    category={list.category}
+                    onSave={changes => handleSaveDetails(editing.id, changes)}
+                    onDelete={() => handleDeleteFromSheet(editing.id)}
+                    onClose={() => setEditingId(null)}
+                />
+            )}
         </div>
     );
 }

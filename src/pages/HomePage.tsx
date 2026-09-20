@@ -1,11 +1,17 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Camera, FileText, ChevronRight, Plus, Edit3, Trash2, CheckSquare, Square, Settings, Pencil } from 'lucide-react';
 import { useAttendanceStore } from '../hooks/useAttendanceStore';
-import { saveList, deleteMultipleLists, updateListTitle } from '../storage/attendanceStore';
+import { newParticipants, saveList, deleteMultipleLists, updateListTitle } from '../storage/attendanceStore';
 import { useState } from 'react';
 import ManualCreateModal from '../components/ManualCreateModal';
 import RenameListModal from '../components/RenameListModal';
+import CategoryPicker from '../components/CategoryPicker';
 import { useModal } from '../context/ModalContext';
+import { useLastCategory } from '../hooks/useLastCategory';
+import { CATEGORIES } from '../categories';
+import type { ParsedItem } from '../parsing/cleanText';
+import type { ListCategory } from '../storage/db';
+import { formatBRL, listTotals } from '../utils/money';
 
 export default function HomePage() {
     const { lists, loading } = useAttendanceStore();
@@ -17,24 +23,25 @@ export default function HomePage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [newListCategory, setNewListCategory] = useLastCategory();
 
     const handleCreateEmpty = async (name: string) => {
-        const newListId = await saveList(name, new Date().toISOString(), []);
+        const newListId = await saveList({
+            title: name,
+            date: new Date().toISOString(),
+            category: newListCategory,
+            participants: [],
+        });
         navigate(`/list/${newListId}`);
     };
 
-    const handleManualSubmit = async (names: string[], title: string) => {
-        const participants = names.map(name => ({
-            id: crypto.randomUUID(),
-            name,
-            present: false
-        }));
-
-        const newListId = await saveList(
+    const handleManualSubmit = async (items: ParsedItem[], category: ListCategory, title: string) => {
+        const newListId = await saveList({
             title,
-            new Date().toISOString(),
-            participants
-        );
+            date: new Date().toISOString(),
+            category,
+            participants: newParticipants(items),
+        });
 
         navigate(`/list/${newListId}`);
     };
@@ -155,6 +162,9 @@ export default function HomePage() {
                     <div className="space-y-3 pb-20">
                         {lists.map(list => {
                             const isSelected = selectedIds.has(list.id);
+                            const config = CATEGORIES[list.category];
+                            const CategoryIcon = config.icon;
+                            const estimatedCents = config.features.pricing ? listTotals(list.participants).estimatedCents : 0;
 
                             // Wrap inside a div or Link based on mode
                             const CardContent = (
@@ -169,9 +179,17 @@ export default function HomePage() {
                                     <div className="flex-1 overflow-hidden">
                                         <h3 className={`font-semibold text-lg line-clamp-1 ${isEditing && isSelected ? 'text-blue-900' : 'text-gray-900'}`}>{list.title}</h3>
                                         <div className="text-sm text-gray-500 mt-1 flex items-center space-x-2">
+                                            <CategoryIcon size={14} className="shrink-0" />
+                                            <span className="sr-only">{config.label}</span>
                                             <span>{new Date(list.date).toLocaleDateString()}</span>
                                             <span>•</span>
                                             <span>{list.participants.filter(p => p.present).length}/{list.participants.length}</span>
+                                            {estimatedCents > 0 && (
+                                                <>
+                                                    <span>•</span>
+                                                    <span className="font-semibold text-gray-700 whitespace-nowrap">{formatBRL(estimatedCents)}</span>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
 
@@ -238,7 +256,9 @@ export default function HomePage() {
                 heading="Nova lista"
                 confirmLabel="Criar"
                 onSubmit={handleCreateEmpty}
-            />
+            >
+                <CategoryPicker value={newListCategory} onChange={setNewListCategory} />
+            </RenameListModal>
         </div>
     );
 }

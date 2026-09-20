@@ -1,19 +1,26 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import { normalizeName } from '../parsing/cleanText';
+import CategoryPicker from './CategoryPicker';
+import { CATEGORIES } from '../categories';
+import { parseLines, type ParsedItem } from '../parsing/cleanText';
+import type { ListCategory } from '../storage/db';
+import { useLastCategory } from '../hooks/useLastCategory';
 
 interface Props {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (names: string[], title: string) => void;
+    onSubmit: (items: ParsedItem[], category: ListCategory, title: string) => void;
 }
 
 export default function ManualCreateModal({ isOpen, onClose, onSubmit }: Props) {
     const [text, setText] = useState('');
     const [listName, setListName] = useState('');
-    const dateFallback = `Lista Manual ${new Date().toLocaleDateString('pt-BR')}`;
+    const [category, setCategory] = useLastCategory();
 
     if (!isOpen) return null;
+
+    const config = CATEGORIES[category];
+    const titleFallback = config.defaultTitle('manual', new Date());
 
     const handleClose = () => {
         setText('');
@@ -22,14 +29,7 @@ export default function ManualCreateModal({ isOpen, onClose, onSubmit }: Props) 
     };
 
     const handleSubmit = () => {
-        const names = text
-            .split('\n')
-            .map(name => name.trim())
-            .filter(name => name.length >= 2)
-            .map(normalizeName);
-
-        const title = listName.trim() || dateFallback;
-        onSubmit(names, title);
+        onSubmit(parseLines(text, config.parseTypedLine), category, listName.trim() || titleFallback);
         setText('');
         setListName('');
         onClose();
@@ -52,6 +52,9 @@ export default function ManualCreateModal({ isOpen, onClose, onSubmit }: Props) 
                 </div>
 
                 <div className="p-5 flex-1 overflow-y-auto">
+                    <div className="mb-4">
+                        <CategoryPicker value={category} onChange={setCategory} />
+                    </div>
                     <label className="block text-sm font-medium text-gray-600 mb-2" htmlFor="manual-list-name">
                         Nome da lista
                     </label>
@@ -59,16 +62,16 @@ export default function ManualCreateModal({ isOpen, onClose, onSubmit }: Props) 
                         id="manual-list-name"
                         type="text"
                         className="w-full mb-4 p-4 border border-blue-200 rounded-2xl bg-blue-50/30 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-800"
-                        placeholder={dateFallback}
+                        placeholder={titleFallback}
                         value={listName}
                         onChange={(e) => setListName(e.target.value)}
                     />
                     <p className="text-sm text-gray-500 mb-4">
-                        Cole ou digite os nomes dos participantes. Coloque <strong>um nome por linha</strong>.
+                        {config.typedHint}
                     </p>
                     <textarea
                         className="w-full h-48 p-4 border border-blue-200 rounded-2xl bg-blue-50/30 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none leading-relaxed shadow-inner font-medium text-gray-800"
-                        placeholder="Exemplo:&#10;João Silva&#10;Maria Souza&#10;Pedro Costa"
+                        placeholder={config.typedPlaceholder}
                         value={text}
                         onChange={(e) => setText(e.target.value)}
                     />

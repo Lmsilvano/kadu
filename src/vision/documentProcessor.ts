@@ -3,15 +3,15 @@
  * Key: do NOT downscale aggressively (Tesseract needs high-res text).
  * Apply sharpening to make text edges crisper.
  */
-export function prepareImageForOcr(img: HTMLImageElement): string {
-    const width = img.naturalWidth || img.width;
-    const height = img.naturalHeight || img.height;
+export function prepareImageForOcr(source: HTMLImageElement | HTMLCanvasElement): string {
+    const width = source instanceof HTMLImageElement ? source.naturalWidth || source.width : source.width;
+    const height = source instanceof HTMLImageElement ? source.naturalHeight || source.height : source.height;
 
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d')!;
-    ctx.drawImage(img, 0, 0, width, height);
+    ctx.drawImage(source, 0, 0, width, height);
 
     // Sharpen to improve text edge definition
     sharpen(ctx, width, height);

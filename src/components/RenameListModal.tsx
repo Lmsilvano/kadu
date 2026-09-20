@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 
 interface Props {
@@ -8,6 +8,8 @@ interface Props {
     onSubmit: (title: string) => void;
     heading?: string;
     confirmLabel?: string;
+    /** Extra fields shown above the name input. */
+    children?: ReactNode;
 }
 
 export default function RenameListModal({
@@ -17,6 +19,7 @@ export default function RenameListModal({
     onSubmit,
     heading = 'Renomear lista',
     confirmLabel = 'Salvar',
+    children,
 }: Props) {
     const [title, setTitle] = useState(currentTitle);
 
@@ -51,6 +54,7 @@ export default function RenameListModal({
                 </div>
 
                 <div className="p-5 flex-1 overflow-y-auto">
+                    {children && <div className="mb-4">{children}</div>}
                     <label className="block text-sm font-medium text-gray-600 mb-2" htmlFor="rename-list-title">
                         Nome da lista
                     </label>
