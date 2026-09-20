@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Key, Eye, EyeOff, CheckCircle, Trash2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Key, Eye, EyeOff, CheckCircle, Trash2, AlertCircle, Smartphone, ChevronRight } from 'lucide-react';
+import InstallSheet from '../components/InstallSheet';
+import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import {
     getGeminiApiKey, setGeminiApiKey, removeGeminiApiKey,
     getOpenAIApiKey, setOpenAIApiKey, removeOpenAIApiKey,
@@ -149,6 +151,8 @@ export default function SettingsPage() {
     }>({ gemini: 'ok', openai: 'ok', groq: 'ok' });
 
     const [loaded, setLoaded] = useState(false);
+    const [isInstallSheetOpen, setIsInstallSheetOpen] = useState(false);
+    const { installed } = useInstallPrompt();
 
     const loadData = async () => {
         const [g, o, gr, sg, so, sgr] = await Promise.all([
@@ -215,7 +219,29 @@ export default function SettingsPage() {
                     onSave={async (k) => { await setGroqApiKey(k); loadData(); }}
                     onRemove={async () => { await removeGroqApiKey(); loadData(); }}
                 />
+
+                <button
+                    type="button"
+                    onClick={() => setIsInstallSheetOpen(true)}
+                    disabled={installed}
+                    className="w-full flex items-center gap-3 bg-white rounded-2xl p-5 shadow-sm border border-gray-100 text-left active:bg-gray-50 disabled:active:bg-white transition-colors"
+                >
+                    <div className="p-2 bg-blue-50 text-blue-600 rounded-lg shrink-0">
+                        <Smartphone size={20} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <h2 className="font-semibold text-gray-900">
+                            {installed ? 'App instalado' : 'Instalar na tela inicial'}
+                        </h2>
+                        <p className="text-xs text-gray-500">
+                            {installed ? 'Você já está usando o Kadu instalado.' : 'Abre em tela cheia e funciona offline.'}
+                        </p>
+                    </div>
+                    {installed ? <CheckCircle size={18} className="text-green-600 shrink-0" /> : <ChevronRight size={18} className="text-gray-400 shrink-0" />}
+                </button>
             </main>
+
+            {isInstallSheetOpen && <InstallSheet onClose={() => setIsInstallSheetOpen(false)} />}
         </div>
     );
 }

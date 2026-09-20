@@ -13,6 +13,15 @@ export async function setLastCategory(category: ListCategory): Promise<void> {
     await db.settings.put({ key: LAST_CATEGORY_KEY, value: category });
 }
 
+const INSTALL_HINT_KEY = 'install_hint_dismissed';
+
+export async function isInstallHintDismissed(): Promise<boolean> {
+    return (await db.settings.get(INSTALL_HINT_KEY))?.value === '1';
+}
+export async function dismissInstallHint(): Promise<void> {
+    await db.settings.put({ key: INSTALL_HINT_KEY, value: '1' });
+}
+
 export async function getGeminiApiKey(): Promise<string | null> {
     const s = await db.settings.get(GEMINI_KEY);
     return s?.value ?? null;

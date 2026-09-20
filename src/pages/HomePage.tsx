@@ -1,13 +1,16 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Camera, FileText, ChevronRight, Plus, Edit3, Trash2, CheckSquare, Square, Settings, Pencil } from 'lucide-react';
+import { Camera, FileText, ChevronRight, Plus, Edit3, Trash2, CheckSquare, Square, Settings, Pencil, Smartphone } from 'lucide-react';
 import { useAttendanceStore } from '../hooks/useAttendanceStore';
 import { newParticipants, saveList, deleteMultipleLists, updateListTitle } from '../storage/attendanceStore';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import ManualCreateModal from '../components/ManualCreateModal';
 import RenameListModal from '../components/RenameListModal';
 import CategoryPicker from '../components/CategoryPicker';
+import InstallSheet from '../components/InstallSheet';
 import { useModal } from '../context/ModalContext';
 import { useLastCategory } from '../hooks/useLastCategory';
+import { useInstallPrompt } from '../hooks/useInstallPrompt';
+import { dismissInstallHint, isInstallHintDismissed } from '../storage/settingsStore';
 import { CATEGORIES } from '../categories';
 import type { ParsedItem } from '../parsing/cleanText';
 import type { ListCategory } from '../storage/db';
@@ -24,6 +27,18 @@ export default function HomePage() {
     const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [newListCategory, setNewListCategory] = useLastCategory();
+    const [isInstallSheetOpen, setIsInstallSheetOpen] = useState(false);
+    const [hintDismissed, setHintDismissed] = useState(true);
+    const { installed, canPrompt } = useInstallPrompt();
+
+    useEffect(() => {
+        isInstallHintDismissed().then(setHintDismissed);
+    }, []);
+
+    const handleDismissHint = () => {
+        setHintDismissed(true);
+        dismissInstallHint();
+    };
 
     const handleCreateEmpty = async (name: string) => {
         const newListId = await saveList({
@@ -129,6 +144,36 @@ export default function HomePage() {
                     <span className="text-lg font-semibold tracking-wide">Digitar</span>
                 </button>
             </div>
+
+            {!installed && !hintDismissed && (
+                <div className="w-full -mt-4 mb-8 p-4 bg-white border border-blue-100 rounded-2xl shadow-sm">
+                    <div className="flex items-start gap-3">
+                        <div className="p-2 bg-blue-50 text-blue-600 rounded-xl shrink-0">
+                            <Smartphone size={20} />
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-sm font-bold text-gray-900">Instale o Kadu no celular</p>
+                            <p className="mt-0.5 text-xs text-gray-500 leading-relaxed">
+                                Fica na tela inicial, abre em tela cheia e funciona sem internet.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex gap-2 mt-3">
+                        <button
+                            onClick={() => setIsInstallSheetOpen(true)}
+                            className="flex-1 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl active:bg-blue-700 transition-colors"
+                        >
+                            {canPrompt ? 'Instalar' : 'Como instalar'}
+                        </button>
+                        <button
+                            onClick={handleDismissHint}
+                            className="px-4 py-2.5 text-sm font-semibold text-gray-500 rounded-xl active:bg-gray-100 transition-colors"
+                        >
+                            Agora não
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <div className="w-full flex-1">
                 <div className="flex items-center justify-between mb-4">
@@ -259,6 +304,8 @@ export default function HomePage() {
             >
                 <CategoryPicker value={newListCategory} onChange={setNewListCategory} />
             </RenameListModal>
+
+            {isInstallSheetOpen && <InstallSheet onClose={() => setIsInstallSheetOpen(false)} />}
         </div>
     );
 }
