@@ -1,6 +1,6 @@
-# 📋 Kadu - Scanner de Presença Inteligente
+# 📋 Kadu - Listas de presença e compras
 
-Kadu é um Aplicativo Web Progressivo (PWA) projetado para digitalizar e gerenciar listas de presença de forma rápida, eficiente e com suporte total a funcionamento offline. Utilizando o poder da IA e OCR, o Kadu transforma fotos de documentos em dados estruturados instantaneamente.
+Kadu é um Aplicativo Web Progressivo (PWA) para digitalizar e gerenciar listas de **presença** e de **compras**. Com OCR e funcionamento offline, transforma fotos de listas impressas em dados estruturados e editáveis no próprio navegador.
 
 ![Status](https://img.shields.io/badge/Status-Development-orange)
 ![PWA](https://img.shields.io/badge/PWA-Ready-success)
@@ -8,18 +8,22 @@ Kadu é um Aplicativo Web Progressivo (PWA) projetado para digitalizar e gerenci
 
 ## ✨ Funcionalidades
 
-- **📸 OCR de Alta Precisão**: Integração com **Groq Cloud API** (Llama 3-Vision) e **Tesseract.js** para extração inteligente de nomes em listas de presença.
-- **🔌 Offline First**: Funciona sem internet através de Service Workers e armazenamento local robusto.
-- **💾 Banco de Dados Local**: Utiliza **Dexie.js** (IndexedDB) para garantir que seus dados nunca se percam, mesmo sem conexão.
-- **🌐 PWA**: Instale no seu celular ou desktop como um aplicativo nativo.
-- **🎨 Interface Moderna**: Desenvolvida com **React** e **Tailwind CSS**, focada em usabilidade mobile-first.
+- **📂 Categorias**
+  - **Padrão**: lista de presença com presente/ausente, observações por pessoa e chips rápidos (Atrasado, Falta justificada, Saiu mais cedo).
+  - **Mercado**: lista de compras com quantidade, preço unitário (digitado ou lido da etiqueta pela câmera), observações e totais **no carrinho** / **estimado**.
+- **📸 Escanear ou digitar**: fotografe a lista ou cole/digite os itens, um por linha.
+- **🔎 OCR**: tenta **Gemini → OpenAI → Groq**; se nada servir, usa **Tesseract.js** no dispositivo.
+- **✏️ Renomear listas**: altere o título depois de criar.
+- **📱 Instalar na tela inicial**: abre em tela cheia e funciona como app.
+- **🔌 Offline**: Service Workers e **Dexie.js** (IndexedDB) guardam as listas no dispositivo.
+- **📤 CSV**: exportação com colunas de acordo com a categoria (presença ou compras).
 
 ## 🛠️ Tech Stack
 
 - **Frontend**: [React](https://reactjs.org/) + [TypeScript](https://www.typescriptlang.org/)
 - **Build Tool**: [Vite](https://vitejs.dev/)
 - **Estilização**: [Tailwind CSS](https://tailwindcss.com/)
-- **OCR**: [Groq Vision](https://groq.com/) & [Tesseract.js](https://tesseract.projectnaptha.com/)
+- **OCR**: Gemini, OpenAI, Groq e [Tesseract.js](https://tesseract.projectnaptha.com/)
 - **Banco de Dados**: [Dexie.js](https://dexie.org/)
 - **PWA**: [Vite PWA Plugin](https://vite-pwa-org.netlify.app/)
 
@@ -33,7 +37,7 @@ Kadu é um Aplicativo Web Progressivo (PWA) projetado para digitalizar e gerenci
 
 1. Clone o repositório:
    ```bash
-   git clone https://github.com/seu-usuario/kadu.git
+   git clone https://github.com/Lmsilvano/kadu.git
    cd kadu
    ```
 
@@ -42,25 +46,20 @@ Kadu é um Aplicativo Web Progressivo (PWA) projetado para digitalizar e gerenci
    npm install
    ```
 
-3. Configure as variáveis de ambiente:
-   Crie um arquivo `.env` na raiz do projeto:
-   ```env
-   VITE_GROQ_API_KEY=sua_chave_aqui
-   ```
-
-4. Inicie o servidor de desenvolvimento:
+3. Inicie o servidor de desenvolvimento:
    ```bash
    npm run dev
    ```
 
+As chaves de OCR (Gemini, OpenAI, Groq) são informadas em **Configurações**, no próprio app.
+
 ## 📦 Deploy na Vercel
 
 O projeto está configurado para deploy automático na Vercel. O roteamento de SPA e os assets de PWA são tratados através do arquivo `vercel.json` e do plugin `vite-plugin-pwa`.
-
 
 ## 📄 Licença
 
 Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
 
 ---
-Desenvolvido com ❤️ para simplificar a gestão de presença.
+Desenvolvido com ❤️ para escanear e organizar listas, online ou offline.
